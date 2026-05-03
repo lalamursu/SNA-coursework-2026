@@ -1,0 +1,17 @@
+Merging 3 filtered CSV(s):
+  data/suomi24_filtered_data_s24_2021.csv
+  data/suomi24_filtered_data_s24_2022.csv
+  data/suomi24_filtered_data_s24_2023.csv
+  Total rows: 904,451
+Running keyword-based sentiment analysis...
+  positive:  146,538  (16.2%)
+  negative:   52,571  (5.8%)
+  neutral :  705,342  (78.0%)
+  Saved: sentiment_distribution.png
+
+[Step 5] Thread Similarity Network
+Building thread similarity network...
+  Sampled 5000 most-active threads from 10000
+  Computing pairwise similarity for 5000 threads...
+  Nodes: 5,000  Edges: 6,745,333
+[Step 8] Global stats — Thread
