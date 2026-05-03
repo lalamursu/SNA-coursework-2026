@@ -30,10 +30,10 @@ def parse_vrt_for_project_8(vrt_filepath, keyword_set, output_filepath):
     lines_processed = 0
 
     with open(vrt_filepath, 'r', encoding='utf-8') as f_in, \
-         open(output_filepath, 'w', encoding='utf-8') as f_out:
+        open(output_filepath, 'w', encoding='utf-8') as f_out:
         
         # Write CSV Header
-        f_out.write("thread_id,post_id,timestamp,content,matched_keywords\n")
+        f_out.write("thread_id,post_id,user_id,section,timestamp,content,matched_keywords\n")
         
         for line in f_in:
             lines_processed += 1
@@ -50,15 +50,25 @@ def parse_vrt_for_project_8(vrt_filepath, keyword_set, output_filepath):
                 # Extract thread_id
                 t_match = re.search(r'thread_id="([^"]+)"', line)
                 current_meta['thread_id'] = t_match.group(1) if t_match else "unknown"
-                
+
                 # Extract post_id
                 p_match = re.search(r'msg_id="([^"]+)"', line)
                 current_meta['post_id'] = p_match.group(1) if p_match else "unknown"
-                
+
                 # Extract datetime
                 d_match = re.search(r'datetime="([^"]+)"', line)
                 current_meta['timestamp'] = d_match.group(1) if d_match else ""
-                
+
+                # Extract user_id — Suomi24 VRT uses 'nick'; fall back to other common names
+                u_match = (re.search(r'nick="([^"]+)"', line)
+                           or re.search(r'author_id="([^"]+)"', line)
+                           or re.search(r'author="([^"]+)"', line))
+                current_meta['user_id'] = u_match.group(1) if u_match else "unknown"
+
+                # Extract forum section/category
+                s_match = re.search(r'section_id="([^"]+)"', line)
+                current_meta['section'] = s_match.group(1) if s_match else ""
+
                 continue
                 
             # Start of a new sentence, resets sentence variables
@@ -79,7 +89,11 @@ def parse_vrt_for_project_8(vrt_filepath, keyword_set, output_filepath):
                     matched_str = ", ".join(matched_keywords_in_sentence)
                     
                     # Write to file
-                    f_out.write(f'"{current_meta.get("thread_id", "")}","{current_meta.get("post_id", "")}","{current_meta.get("timestamp", "")}","{clean_text}","{matched_str}"\n')
+                    f_out.write(
+                        f'"{current_meta.get("thread_id", "")}","{current_meta.get("post_id", "")}",'
+                        f'"{current_meta.get("user_id", "")}","{current_meta.get("section", "")}",'
+                        f'"{current_meta.get("timestamp", "")}","{clean_text}","{matched_str}"\n'
+                    )
                     matches_found += 1
                 continue
                 
@@ -87,7 +101,7 @@ def parse_vrt_for_project_8(vrt_filepath, keyword_set, output_filepath):
             elif line.startswith('<'):
                 continue
                 
-           #process word rows
+            #process word rows
             else:
                 parts = line.split('\t')
                 
