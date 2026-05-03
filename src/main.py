@@ -3,12 +3,13 @@
 Main analysis pipeline — SNA Project 8, steps 5–13.
 
 Usage (from project root):
-    python src/main.py
+    python src/main.py [--threshold T] [--max-threads N] [--min-posts P] [--output-dir DIR]
 
 Progress is shown live in the terminal (stderr).
-Detailed output is written to outputs/reports/run.log.
+Detailed output is written to <output-dir>/reports/run.log.
 """
 
+import argparse
 import json
 import sys
 import time
@@ -47,14 +48,12 @@ from visualization import (
     plot_topic_influence,
 )
 
-BASE_DIR  = Path(__file__).resolve().parent.parent
-DATA_DIR  = BASE_DIR / "data"
-PLOTS_DIR = BASE_DIR / "outputs" / "plots"
-REPORTS_DIR = BASE_DIR / "outputs" / "reports"
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = BASE_DIR / "data"
 
-# ── Configuration ─────────────────────────────────────────────────────────────
+# ── Configuration (overridable via CLI) ───────────────────────────────────────
 SIMILARITY_THRESHOLD = 0.15
-MAX_THREADS  = 5_000
+MAX_THREADS    = 5_000
 MIN_USER_POSTS = 2
 
 # ── Step definitions ──────────────────────────────────────────────────────────
@@ -149,18 +148,28 @@ def _centrality_csv(top_nodes: dict, path: Path) -> None:
 # ── Main pipeline ─────────────────────────────────────────────────────────────
 
 def main() -> None:
-    PLOTS_DIR.mkdir(parents=True, exist_ok=True)
-    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    ap = argparse.ArgumentParser(description="SNA Project 8 — analysis pipeline")
+    ap.add_argument("--threshold",   type=float, default=SIMILARITY_THRESHOLD)
+    ap.add_argument("--max-threads", type=int,   default=MAX_THREADS)
+    ap.add_argument("--min-posts",   type=int,   default=MIN_USER_POSTS)
+    ap.add_argument("--output-dir",  type=Path,  default=BASE_DIR / "outputs")
+    args = ap.parse_args()
 
-    # Redirect stdout to run.log; progress tracker uses stderr (terminal)
-    run_log = open(REPORTS_DIR / "run.log", "w", buffering=1, encoding="utf-8")
+    out_dir    = args.output_dir
+    plots_dir  = out_dir / "plots"
+    reports_dir = out_dir / "reports"
+    plots_dir.mkdir(parents=True, exist_ok=True)
+    reports_dir.mkdir(parents=True, exist_ok=True)
+
+    run_log = open(reports_dir / "run.log", "w", buffering=1, encoding="utf-8")
     _orig_stdout = sys.stdout
     sys.stdout = run_log
 
     tracker = ProgressTracker(STEPS)
 
     try:
-        _run_pipeline(tracker)
+        _run_pipeline(tracker, args.threshold, args.max_threads, args.min_posts,
+                      plots_dir, reports_dir)
     finally:
         tracker.finish()
         sys.stdout = _orig_stdout
@@ -171,14 +180,21 @@ def main() -> None:
     m, s = divmod(rem, 60)
     sys.stderr.write(
         f"\n✓  Done in {h}h {m:02d}m {s:02d}s\n"
-        f"   Plots   → {PLOTS_DIR}\n"
-        f"   Reports → {REPORTS_DIR}\n"
-        f"   Run log → {REPORTS_DIR / 'run.log'}\n"
+        f"   Plots   → {plots_dir}\n"
+        f"   Reports → {reports_dir}\n"
+        f"   Run log → {reports_dir / 'run.log'}\n"
     )
     sys.stderr.flush()
 
 
-def _run_pipeline(t: ProgressTracker) -> None:  # noqa: C901
+def _run_pipeline(  # noqa: C901
+    t: ProgressTracker,
+    threshold: float,
+    max_threads: int,
+    min_posts: int,
+    plots_dir: Path,
+    reports_dir: Path,
+) -> None:
     all_stats: dict = {}
 
     # ── Load data ──────────────────────────────────────────────────────────
@@ -190,7 +206,7 @@ def _run_pipeline(t: ProgressTracker) -> None:  # noqa: C901
     t.start_step(1)
     if "sentiment" not in df.columns:
         df = add_sentiment_to_df(df)
-        plot_sentiment_distribution(df, PLOTS_DIR / "sentiment_distribution.png")
+        plot_sentiment_distribution(df, plots_dir / "sentiment_distribution.png")
 
     # ══════════════════════════════════════════════════════════════════════
     # Step 5  Thread Similarity Network
@@ -198,7 +214,7 @@ def _run_pipeline(t: ProgressTracker) -> None:  # noqa: C901
     t.start_step(2)
     print("\n[Step 5] Thread Similarity Network")
     G_thread = build_thread_similarity_network(
-        df, threshold=SIMILARITY_THRESHOLD, max_threads=MAX_THREADS
+        df, threshold=threshold, max_threads=max_threads
     )
 
     t.start_step(3)
@@ -210,8 +226,8 @@ def _run_pipeline(t: ProgressTracker) -> None:  # noqa: C901
     t.start_step(4)
     print("[Step 9] Centrality — Thread")
     _, top_thread = centrality_analysis(G_thread)
-    plot_centrality_bars(top_thread, "Thread Similarity", PLOTS_DIR / "centrality_thread.png")
-    _centrality_csv(top_thread, REPORTS_DIR / "centrality_top20_thread.csv")
+    plot_centrality_bars(top_thread, "Thread Similarity", plots_dir / "centrality_thread.png")
+    _centrality_csv(top_thread, reports_dir / "centrality_top20_thread.csv")
 
     t.start_step(5)
     print("[Step 10] Community detection — Thread")
@@ -231,28 +247,28 @@ def _run_pipeline(t: ProgressTracker) -> None:  # noqa: C901
     pd.DataFrame(
         [{"node": n, "core_number": k} for n, k in core_t.items()]
     ).sort_values("core_number", ascending=False).to_csv(
-        REPORTS_DIR / "kcore_thread.csv", index=False
+        reports_dir / "kcore_thread.csv", index=False
     )
 
     t.start_step(8)
     print("Plots — Thread")
     plot_network_sample(G_thread, "Thread Similarity Network",
-                        PLOTS_DIR / "network_thread.png", color_attr="community")
+                        plots_dir / "network_thread.png", color_attr="community")
     plot_degree_distribution(G_thread, "Thread Similarity",
-                            PLOTS_DIR / "degree_dist_thread.png")
+                            plots_dir / "degree_dist_thread.png")
     plot_communities(G_thread, part_thread, "Thread Similarity",
-                    PLOTS_DIR / "communities_thread.png")
+                    plots_dir / "communities_thread.png")
     plot_kcore(G_thread, core_t, "Thread Similarity",
-                PLOTS_DIR / "kcore_thread.png")
+                plots_dir / "kcore_thread.png")
     plot_kcore_distribution(core_t, "Thread Similarity",
-                            PLOTS_DIR / "kcore_dist_thread.png")
+                            plots_dir / "kcore_dist_thread.png")
 
     # ══════════════════════════════════════════════════════════════════════
     # Step 6  User Interaction Network
     # ══════════════════════════════════════════════════════════════════════
     t.start_step(9)
     print("\n[Step 6] User Interaction Network")
-    G_user = build_user_interaction_network(df, min_posts=MIN_USER_POSTS)
+    G_user = build_user_interaction_network(df, min_posts=min_posts)
 
     t.start_step(10)
     print("[Step 8] Global stats — User")
@@ -263,8 +279,8 @@ def _run_pipeline(t: ProgressTracker) -> None:  # noqa: C901
     t.start_step(11)
     print("[Step 9] Centrality — User")
     _, top_user = centrality_analysis(G_user)
-    plot_centrality_bars(top_user, "User Interaction", PLOTS_DIR / "centrality_user.png")
-    _centrality_csv(top_user, REPORTS_DIR / "centrality_top20_user.csv")
+    plot_centrality_bars(top_user, "User Interaction", plots_dir / "centrality_user.png")
+    _centrality_csv(top_user, reports_dir / "centrality_top20_user.csv")
 
     t.start_step(12)
     print("[Step 10] Community detection — User")
@@ -284,23 +300,23 @@ def _run_pipeline(t: ProgressTracker) -> None:  # noqa: C901
     pd.DataFrame(
         [{"node": n, "core_number": k} for n, k in core_u.items()]
     ).sort_values("core_number", ascending=False).to_csv(
-        REPORTS_DIR / "kcore_user.csv", index=False
+        reports_dir / "kcore_user.csv", index=False
     )
 
     t.start_step(15)
     print("Plots — User")
     plot_network_sample(G_user, "User Interaction Network",
-                        PLOTS_DIR / "network_user.png", color_attr="community")
+                        plots_dir / "network_user.png", color_attr="community")
     plot_degree_distribution(G_user, "User Interaction",
-                            PLOTS_DIR / "degree_dist_user.png")
+                            plots_dir / "degree_dist_user.png")
     plot_communities(G_user, part_user, "User Interaction",
-                    PLOTS_DIR / "communities_user.png")
+                    plots_dir / "communities_user.png")
     plot_kcore(G_user, core_u, "User Interaction",
-                PLOTS_DIR / "kcore_user.png")
+                plots_dir / "kcore_user.png")
     plot_kcore_distribution(core_u, "User Interaction",
-                            PLOTS_DIR / "kcore_dist_user.png")
+                            plots_dir / "kcore_dist_user.png")
     plot_community_profiles(df, part_user, user_col,
-                            PLOTS_DIR / "community_sentiment_user.png")
+                            plots_dir / "community_sentiment_user.png")
 
     # ══════════════════════════════════════════════════════════════════════
     # Step 7  Bipartite User–Topic Network + projections
@@ -318,8 +334,8 @@ def _run_pipeline(t: ProgressTracker) -> None:  # noqa: C901
     t.start_step(18)
     print("[Step 9] Centrality — Topic")
     _, top_topic = centrality_analysis(G_topic_proj)
-    plot_centrality_bars(top_topic, "Topic Co-occurrence", PLOTS_DIR / "centrality_topic.png")
-    _centrality_csv(top_topic, REPORTS_DIR / "centrality_top20_topic.csv")
+    plot_centrality_bars(top_topic, "Topic Co-occurrence", plots_dir / "centrality_topic.png")
+    _centrality_csv(top_topic, reports_dir / "centrality_top20_topic.csv")
 
     t.start_step(19)
     print("[Step 10] Community detection — Topic")
@@ -338,11 +354,11 @@ def _run_pipeline(t: ProgressTracker) -> None:  # noqa: C901
     t.start_step(22)
     print("Plots — Topic")
     plot_network_sample(G_topic_proj, "Topic Co-occurrence Network",
-                        PLOTS_DIR / "network_topic.png", color_attr=None)
+                        plots_dir / "network_topic.png", color_attr=None)
     plot_degree_distribution(G_topic_proj, "Topic Co-occurrence",
-                            PLOTS_DIR / "degree_dist_topic.png")
+                            plots_dir / "degree_dist_topic.png")
     plot_kcore_distribution(core_topic, "Topic Co-occurrence",
-                            PLOTS_DIR / "kcore_dist_topic.png")
+                            plots_dir / "kcore_dist_topic.png")
 
     # ══════════════════════════════════════════════════════════════════════
     # Step 13  Topic Popularity vs Influence
@@ -351,13 +367,13 @@ def _run_pipeline(t: ProgressTracker) -> None:  # noqa: C901
     print("\n[Step 13] Topic popularity vs influence")
     topic_df = topic_influence_analysis(G_topic_proj, df)
     print(topic_df.head(20).to_string(index=False))
-    topic_df.to_csv(REPORTS_DIR / "topic_influence.csv", index=False)
-    plot_topic_influence(topic_df, PLOTS_DIR / "topic_influence.png")
+    topic_df.to_csv(reports_dir / "topic_influence.csv", index=False)
+    plot_topic_influence(topic_df, plots_dir / "topic_influence.png")
 
     # ── Save consolidated report ───────────────────────────────────────────
     t.start_step(24)
     print("Save reports")
-    _save_json(all_stats, REPORTS_DIR / "network_stats.json")
+    _save_json(all_stats, reports_dir / "network_stats.json")
 
 if __name__ == "__main__":
     main()
