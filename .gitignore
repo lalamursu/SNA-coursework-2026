@@ -1,0 +1,54 @@
+# ==========================================
+# Python ja virtuaaliympäristöt
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.venv/
+
+# ==========================================
+# Jupyter Notebook -väliaikaistiedostot
+# ==========================================
+.ipynb_checkpoints/
+
+# ==========================================
+# Data ja tulokset (Tärkeä tässä projektissa!)
+# ==========================================
+# Ignorataan kaikki suuret datatiedostot
+*.csv
+*.tsv
+*.xlsx
+*.json
+*.vrt
+*.zip
+*.tar.gz
+*.bz2
+
+# Ignorataan verkostoanalyysin vientitiedostot
+*.gexf
+*.graphml
+*.net
+
+# Hakemistot datalle ja tuloksille
+raw_data/
+processed_data/
+output/
+
+# ==========================================
+# Koneoppimismallit (Task 4 Asenneanalyysi)
+# ==========================================
+*.h5
+*.pt
+*.pth
+*.pkl
+models/
+
+# ==========================================
+# IDE:t ja käyttöjärjestelmätiedostot
+# ==========================================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
