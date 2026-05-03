@@ -100,17 +100,23 @@ The GUI has:
 | `src/main.py` | Main pipeline, CLI entry point |
 | `src/app.py` | TkInter GUI viewer and control panel |
 
-## Data directory layout
+## Directory layout
 
 ```
 data/
   keywords.csv                          keyword list (one per row)
-  suomi24_filtered_data_<year>.csv      VRT parser output (one per VRT file)
+  suomi24_filtered_data_s24_<year>.csv  VRT parser output (one per VRT file)
   suomi24_STRICT_food_data.csv          strict filter output (optional)
   suomi24_sentiment_FINAL_results.csv   FinBERT output (optional)
 
 outputs/
-  plots/         visualisations for default config
-  reports/       CSVs, JSON, run.log for default config
-  t<T>_n<N>_p<P>/   per-config output directories (GUI batch runner)
+  t<T>_n<N>_p<P>/                       one directory per config run
+    plots/                              PNG visualizations
+    reports/                            CSVs, network_stats.json, run.log
+
+suomi24-2021-2023-vrt/
+  data/
+    s24_2021.vrt                        Kielipankki corpus files
+    s24_2022.vrt
+    s24_2023.vrt
 ```
