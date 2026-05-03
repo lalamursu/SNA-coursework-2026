@@ -54,7 +54,7 @@ REPORTS_DIR = BASE_DIR / "outputs" / "reports"
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 SIMILARITY_THRESHOLD = 0.15
-MAX_THREADS  = 5_000
+MAX_THREADS  = 5_00
 MIN_USER_POSTS = 2
 
 # ── Step definitions ──────────────────────────────────────────────────────────
