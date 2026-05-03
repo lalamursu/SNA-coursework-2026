@@ -1,0 +1,135 @@
+Merging 3 filtered CSV(s):
+  data/suomi24_filtered_data_s24_2021.csv
+  data/suomi24_filtered_data_s24_2022.csv
+  data/suomi24_filtered_data_s24_2023.csv
+  Total rows: 610,014
+Running keyword-based sentiment analysis...
+  positive:   96,101  (15.8%)
+  negative:   34,957  (5.7%)
+  neutral :  478,956  (78.5%)
+  Saved: sentiment_distribution.png
+
+[Step 5] Thread Similarity Network
+Building thread similarity network...
+  Sampled 500 most-active threads from 1000
+  Computing pairwise similarity for 500 threads...
+  Nodes: 500  Edges: 68,850
+[Step 8] Global stats — Thread
+    Nodes: 500
+    Edges: 68850
+    Avg Degree: 275.4
+    Max Degree: 485
+    Avg Clustering Coeff: 0.848
+    Num Components: 1
+    Giant Component Size: 500
+    Giant Component %: 100.0
+    Diameter: 3
+    Avg Path Length: 1.448
+[Step 9] Centrality — Thread
+  Saved: centrality_thread.png
+  Saved: centrality_top20_thread.csv
+[Step 10] Community detection — Thread
+  Communities: 2  Modularity: 0.1802
+[Step 11] Assortativity — Thread
+    degree: 0.164
+    sentiment: -0.0025
+    community: 0.4165
+[Step 12] K-core — Thread
+  Max k: 285  Core nodes: 291  Peripheral: 0
+Plots — Thread
+  Saved: network_thread.png
+  Saved: degree_dist_thread.png
+  Saved: communities_thread.png
+  Saved: kcore_thread.png
+  Saved: kcore_dist_thread.png
+
+[Step 6] User Interaction Network
+Building user interaction network...
+  Active users (≥2 posts): 1,414
+  Nodes: 1,414  Edges: 46,266
+[Step 8] Global stats — User
+    Nodes: 1414
+    Edges: 46266
+    Avg Degree: 65.44
+    Max Degree: 1177
+    Avg Clustering Coeff: 0.5424
+    Num Components: 164
+    Giant Component Size: 1250
+    Giant Component %: 88.4
+    Diameter: 4
+    Avg Path Length: 2.005
+[Step 9] Centrality — User
+  Saved: centrality_user.png
+  Saved: centrality_top20_user.csv
+[Step 10] Community detection — User
+  Communities: 168  Modularity: 0.2067
+[Step 11] Assortativity — User
+    degree: -0.1512
+    sentiment: 0.0203
+    community: 0.261
+    post_count: -0.0149
+    thread_count: -0.0171
+[Step 12] K-core — User
+  Max k: 143  Core nodes: 206  Peripheral: 215
+Plots — User
+  Saved: network_user.png
+  Saved: degree_dist_user.png
+  Saved: communities_user.png
+  Saved: kcore_user.png
+  Saved: kcore_dist_user.png
+  Saved: community_sentiment_user.png
+
+[Step 7] Bipartite User–Topic Network
+Building bipartite user–topic network...
+  Bipartite: 2,297 users, 55 topics
+  User projection : 2,297 nodes, 1,431,455 edges
+  Topic projection: 55 nodes, 1,485 edges
+[Step 8] Global stats — Topic
+    Nodes: 55
+    Edges: 1485
+    Avg Degree: 54.0
+    Max Degree: 54
+    Avg Clustering Coeff: 1.0
+    Num Components: 1
+    Giant Component Size: 55
+    Giant Component %: 100.0
+    Diameter: 1
+    Avg Path Length: 1.0
+[Step 9] Centrality — Topic
+  Saved: centrality_topic.png
+  Saved: centrality_top20_topic.csv
+[Step 10] Community detection — Topic
+  Communities: 1  Modularity: 0.0000
+[Step 11] Assortativity — Topic
+[Step 12] K-core — Topic
+  Max k: 54  Core nodes: 55  Peripheral: 0
+Plots — Topic
+  Saved: network_topic.png
+  Saved: degree_dist_topic.png
+  Saved: kcore_dist_topic.png
+
+[Step 13] Topic popularity vs influence
+       topic  frequency  degree_centrality  betweenness_centrality  freq_rank  centrality_rank  rank_diff
+       hinta     151684                1.0                     0.0          1                1          0
+      helppo      98801                1.0                     0.0          2                1          1
+      kallis      73044                1.0                     0.0          3                1          2
+       halpa      64923                1.0                     0.0          4                1          3
+        liha      37154                1.0                     0.0          5                1          4
+       nopea      32980                1.0                     0.0          6                1          5
+     terveys      23595                1.0                     0.0          7                1          6
+     ilmasto      23260                1.0                     0.0          8                1          7
+   edullinen      15745                1.0                     0.0          9                1          8
+        sika      14682                1.0                     0.0         10                1          9
+        maku      14073                1.0                     0.0         11                1         10
+     tarjous      11088                1.0                     0.0         12                1         11
+     kestävä       9196                1.0                     0.0         13                1         12
+       rasva       8429                1.0                     0.0         14                1         13
+      sokeri       8186                1.0                     0.0         15                1         14
+terveellinen       7686                1.0                     0.0         16                1         15
+      karkki       4208                1.0                     0.0         17                1         16
+      kalori       3969                1.0                     0.0         18                1         17
+      mauton       3155                1.0                     0.0         19                1         18
+   proteiini       3051                1.0                     0.0         20                1         19
+  Saved: topic_influence.png
+Save reports
+  Saved: network_stats.json

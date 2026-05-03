@@ -44,9 +44,10 @@ def build_thread_similarity_network(
     thread_docs = thread_docs[thread_docs["kw_text"].str.strip() != ""]
 
     if len(thread_docs) > max_threads:
+        original_count = len(thread_docs)
         thread_docs["kw_count"] = thread_docs["kw_text"].str.split().str.len()
         thread_docs = thread_docs.nlargest(max_threads, "kw_count")
-        print(f"  Sampled {max_threads} most-active threads from {len(thread_docs) + max_threads}")
+        print(f"  Sampled {max_threads} most-active threads from {original_count}")
 
     threads = thread_docs["thread_id"].tolist()
     docs = thread_docs["kw_text"].tolist()

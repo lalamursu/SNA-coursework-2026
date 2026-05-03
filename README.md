@@ -4,7 +4,7 @@ Course work for Introduction to Social Network Analysis, University of Oulu 2026
 
 The project analyses Finnish food and health discussions from the Suomi24 corpus
 (Kielipankki VRT format) and applies social network analysis techniques to the data
-(Steps 5-13 of Project 8).
+(Project 8).
 
 ## Requirements
 
