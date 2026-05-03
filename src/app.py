@@ -37,27 +37,27 @@ MAUVE  = "#cba6f7"
 # Each entry becomes one viewer page; images are displayed side-by-side (≤2).
 PLOT_PAGES = [
     ("Sentiment distribution",
-     ["sentiment_distribution.png"]),
+    ["sentiment_distribution.png"]),
     ("Step 5 — Thread Similarity: network & degree",
-     ["network_thread.png", "degree_dist_thread.png"]),
+    ["network_thread.png", "degree_dist_thread.png"]),
     ("Step 5 — Thread Similarity: communities & k-core",
-     ["communities_thread.png", "kcore_thread.png"]),
+    ["communities_thread.png", "kcore_thread.png"]),
     ("Step 5 — Thread Similarity: centrality & k-core distribution",
-     ["centrality_thread.png", "kcore_dist_thread.png"]),
+    ["centrality_thread.png", "kcore_dist_thread.png"]),
     ("Step 6 — User Interaction: network & degree",
-     ["network_user.png", "degree_dist_user.png"]),
+    ["network_user.png", "degree_dist_user.png"]),
     ("Step 6 — User Interaction: communities & sentiment",
-     ["communities_user.png", "community_sentiment_user.png"]),
+    ["communities_user.png", "community_sentiment_user.png"]),
     ("Step 6 — User Interaction: centrality & k-core",
-     ["centrality_user.png", "kcore_user.png"]),
+    ["centrality_user.png", "kcore_user.png"]),
     ("Step 6 — User Interaction: k-core distribution",
-     ["kcore_dist_user.png"]),
+    ["kcore_dist_user.png"]),
     ("Step 7 — Topic Co-occurrence: network & degree",
-     ["network_topic.png", "degree_dist_topic.png"]),
+    ["network_topic.png", "degree_dist_topic.png"]),
     ("Step 7 — Topic Co-occurrence: centrality & k-core distribution",
-     ["centrality_topic.png", "kcore_dist_topic.png"]),
+    ["centrality_topic.png", "kcore_dist_topic.png"]),
     ("Step 13 — Topic popularity vs influence",
-     ["topic_influence.png"]),
+    ["topic_influence.png"]),
 ]
 
 # ── Default config values ─────────────────────────────────────────────────────
@@ -80,13 +80,21 @@ def _has_results(label: str) -> bool:
     return (_output_dir(label) / "reports" / "network_stats.json").exists()
 
 
-def _list_completed_configs() -> list[str]:
+def _list_all_configs() -> list[str]:
+    """Return all output subdirs that have at least a plots/ or reports/ child."""
     if not OUTPUTS_DIR.exists():
         return []
     return sorted(
         d.name for d in OUTPUTS_DIR.iterdir()
-        if d.is_dir() and _has_results(d.name)
+        if d.is_dir() and (
+            (d / "plots").exists() or (d / "reports").exists()
+        )
     )
+
+
+def _config_label(name: str) -> str:
+    """Display name for the dropdown — adds '(partial)' if run did not finish."""
+    return name if _has_results(name) else f"{name}  (partial)"
 
 
 def _load_stats(label: str) -> dict:
@@ -180,7 +188,6 @@ class App(tk.Tk):
         self._build_data_mgmt(f0)
 
         # Pages 1…N: plot viewers (built lazily on first visit)
-        self._selected_config: tk.StringVar = tk.StringVar(value="")
         for _ in PLOT_PAGES:
             f = tk.Frame(self._area, bg=BG)
             self._frames.append(f)
@@ -300,8 +307,8 @@ class App(tk.Tk):
 
     def _ensure_plot_page(self, page_idx: int) -> None:
         frame = self._frames[page_idx]
-        if frame.winfo_children():
-            return  # already built
+        for w in frame.winfo_children():
+            w.destroy()
 
         plot_idx = page_idx - 1
         _, filenames = PLOT_PAGES[plot_idx]
@@ -422,22 +429,23 @@ class App(tk.Tk):
         cfg_row = tk.Frame(right, bg=BG)
         cfg_row.pack(fill=tk.X, pady=(0, 4))
 
-        completed = _list_completed_configs()
-        self._cfg_var = tk.StringVar(value=completed[0] if completed else "")
+        configs = _list_all_configs()
+        self._cfg_var = tk.StringVar(value=configs[0] if configs else "")
         self._selected_config = self._cfg_var
 
         self._cfg_dropdown = ttk.Combobox(
             cfg_row, textvariable=self._cfg_var,
-            values=completed, state="readonly", width=28,
+            values=configs, state="readonly", width=32,
             font=("Courier", 10))
         self._cfg_dropdown.pack(side=tk.LEFT, padx=(0, 8))
+        self._cfg_dropdown.bind("<<ComboboxSelected>>", lambda _: self._load_config())
         self._button(cfg_row, "Load", self._load_config, fg=BLUE, side=tk.LEFT)
 
         self._cfg_info = self._textbox(right, height=5, scrollbar=False,
                                        fill=tk.X, pady=(0, 8))
         self._cfg_info.config(state=tk.NORMAL)
-        if completed:
-            self._refresh_cfg_info(completed[0])
+        if configs:
+            self._refresh_cfg_info(configs[0])
 
         # Single config run
         self._section_label(right, "RUN SINGLE CONFIGURATION  (main.py)")
@@ -540,8 +548,9 @@ class App(tk.Tk):
 
     def _refresh_cfg_info(self, label: str) -> None:
         stats = _load_stats(label)
+        partial = not _has_results(label)
         if not stats:
-            text = "(no results found)"
+            text = f"Config: {label}\n" + ("(partial run: some information is still missing)" if partial else "(no results found)")
         else:
             lines = [f"Config: {label}"]
             for net_key, net_stats in stats.items():
@@ -650,10 +659,10 @@ class App(tk.Tk):
         self._run_status.config(text=text, fg=color)
 
     def _refresh_completed_dropdown(self) -> None:
-        completed = _list_completed_configs()
-        self._cfg_dropdown["values"] = completed
-        if completed and not self._cfg_var.get():
-            self._cfg_var.set(completed[0])
+        configs = _list_all_configs()
+        self._cfg_dropdown["values"] = configs
+        if configs and not self._cfg_var.get():
+            self._cfg_var.set(configs[0])
 
     # ── Schedule queue ────────────────────────────────────────────────────────
 
