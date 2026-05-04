@@ -35,6 +35,9 @@ else:
     _PYTHON = sys.executable
 _MAIN_PY = str(SRC_DIR / "main.py")
 
+# Force UTF-8 stdout/stderr in all subprocesses regardless of Windows console encoding
+_UTF8_ENV = {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"}
+
 # ── Catppuccin Mocha palette ──────────────────────────────────────────────────
 BG     = "#1e1e2e"
 BG2    = "#313244"
@@ -632,7 +635,7 @@ class App(tk.Tk):
                 proc = subprocess.Popen(
                     cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                     text=True, bufsize=1, encoding="utf-8",
-                    cwd=str(BASE_DIR))
+                    cwd=str(BASE_DIR), env=_UTF8_ENV)
                 for line in proc.stdout:
                     _append(line)
                 proc.wait()
@@ -794,7 +797,8 @@ class App(tk.Tk):
                 try:
                     proc = subprocess.Popen(
                         cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                        text=True, bufsize=1, cwd=str(BASE_DIR))
+                        text=True, bufsize=1, encoding="utf-8",
+                        cwd=str(BASE_DIR), env=_UTF8_ENV)
                     for line in proc.stdout:
                         self._queue_append_log(line)
                     proc.wait()
@@ -822,7 +826,8 @@ class App(tk.Tk):
                         proc2 = subprocess.Popen(
                             retry_cmd, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, text=True,
-                            bufsize=1, cwd=str(BASE_DIR))
+                            bufsize=1, encoding="utf-8",
+                            cwd=str(BASE_DIR), env=_UTF8_ENV)
                         for line in proc2.stdout:
                             self._queue_append_log(line)
                         proc2.wait()
