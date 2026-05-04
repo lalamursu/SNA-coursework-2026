@@ -24,7 +24,15 @@ OUTPUTS_DIR = BASE_DIR / "outputs"
 
 # Use venv Python when available so subprocesses inherit installed packages
 _venv = os.environ.get("VIRTUAL_ENV")
-_PYTHON = str(Path(_venv) / "bin" / "python3") if _venv and Path(_venv).exists() else sys.executable
+if _venv and Path(_venv).exists():
+    _candidate = (
+        Path(_venv) / "Scripts" / "python.exe"   # Windows
+        if sys.platform == "win32"
+        else Path(_venv) / "bin" / "python3"      # Linux / macOS
+    )
+    _PYTHON = str(_candidate) if _candidate.exists() else sys.executable
+else:
+    _PYTHON = sys.executable
 _MAIN_PY = str(SRC_DIR / "main.py")
 
 # ── Catppuccin Mocha palette ──────────────────────────────────────────────────
@@ -618,7 +626,7 @@ class App(tk.Tk):
             try:
                 proc = subprocess.Popen(
                     cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                    text=True, bufsize=1,
+                    text=True, bufsize=1, encoding="utf-8",
                     cwd=str(BASE_DIR))
                 for line in proc.stdout:
                     _append(line)

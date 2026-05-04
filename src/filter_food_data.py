@@ -107,7 +107,7 @@ def filter_and_combine_datasets():
         print(f"\nKäsitellään: {filename}")
         
         # Ladataan data
-        df = pd.read_csv(input_path)
+        df = pd.read_csv(input_path, encoding="utf-8")
         original_len = len(df)
         total_original += original_len
         

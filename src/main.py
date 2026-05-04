@@ -103,7 +103,7 @@ def _load_data() -> pd.DataFrame:
     if sentiment_files:
         p = min(sentiment_files)
         print(f"Loading FinBERT sentiment output: {p.relative_to(BASE_DIR)}")
-        df = pd.read_csv(p, dtype=str)
+        df = pd.read_csv(p, dtype=str, encoding="utf-8")
         # Normalize column names so the rest of the pipeline finds them
         rename = {}
         if "Sentiment" in df.columns and "sentiment" not in df.columns:
@@ -119,7 +119,7 @@ def _load_data() -> pd.DataFrame:
     strict = DATA_DIR / "suomi24_STRICT_food_data.csv"
     if strict.exists():
         print(f"Loading strict food filter output: {strict.relative_to(BASE_DIR)}")
-        df = pd.read_csv(strict, dtype=str)
+        df = pd.read_csv(strict, dtype=str, encoding="utf-8")
         print(f"  Rows: {len(df):,}  Columns: {list(df.columns)}")
         return df
 
@@ -130,7 +130,7 @@ def _load_data() -> pd.DataFrame:
         frames = []
         for p in filtered:
             print(f"  {p.relative_to(BASE_DIR)}")
-            frames.append(pd.read_csv(p, dtype=str))
+            frames.append(pd.read_csv(p, dtype=str, encoding="utf-8"))
         df = pd.concat(frames, ignore_index=True)
         print(f"  Total rows: {len(df):,}")
         return df
@@ -159,7 +159,7 @@ def _centrality_csv(top_nodes: dict, path: Path) -> None:
         for m, entries in top_nodes.items()
         for r, (n, s) in enumerate(entries)
     ]
-    pd.DataFrame(rows).to_csv(path, index=False)
+    pd.DataFrame(rows).to_csv(path, index=False, encoding="utf-8")
     print(f"  Saved: {path.name}")
 
 
@@ -265,7 +265,7 @@ def _run_pipeline(  # noqa: C901
     pd.DataFrame(
         [{"node": n, "core_number": k} for n, k in core_t.items()]
     ).sort_values("core_number", ascending=False).to_csv(
-        reports_dir / "kcore_thread.csv", index=False
+        reports_dir / "kcore_thread.csv", index=False, encoding="utf-8"
     )
 
     t.start_step(8)
@@ -318,7 +318,7 @@ def _run_pipeline(  # noqa: C901
     pd.DataFrame(
         [{"node": n, "core_number": k} for n, k in core_u.items()]
     ).sort_values("core_number", ascending=False).to_csv(
-        reports_dir / "kcore_user.csv", index=False
+        reports_dir / "kcore_user.csv", index=False, encoding="utf-8"
     )
 
     t.start_step(15)
@@ -385,7 +385,7 @@ def _run_pipeline(  # noqa: C901
     print("\n[Step 13] Topic popularity vs influence")
     topic_df = topic_influence_analysis(G_topic_proj, df)
     print(topic_df.head(20).to_string(index=False))
-    topic_df.to_csv(reports_dir / "topic_influence.csv", index=False)
+    topic_df.to_csv(reports_dir / "topic_influence.csv", index=False, encoding="utf-8")
     plot_topic_influence(topic_df, plots_dir / "topic_influence.png")
 
     # ── Save consolidated report ───────────────────────────────────────────
