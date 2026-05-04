@@ -14,15 +14,62 @@ def run_sentiment_analysis():
         print(f"VIRHE: Tiedostoa {input_file} ei löydy. Aja suodatinkoodi ensin!")
         return
 
-    # 2. Määritellään kategoriat (Health vs. Sustainability)
+    # 2. Määritellään kategoriat - TÄSMÄLLEEN SAMAT LAITETTU TÄNNE (Health vs. Sustainability)
     health_words = [
-        "terveys", "terveellinen", "epäterveellinen", "vitamiini", 
-        "dieetti", "ruokavalio", "ravintoarvo", "proteiini", "kalori", "rasva", "sokeri"
+        "terveys", "terveellinen", "epäterveellinen", "hyvinvointi", "terveellisyys",
+        "terveydelle", "terveyshyöty", "sairaus", "oire", "lääkäri", "verenpaine",
+        "kolesteroli", "verensokeri", "sydäntauti", "diabetes", "ylipaino", "lihavuus",
+        "laihdutus", "painonhallinta", "laihtua", "laihduttaa", "terveemmin", "terveempi",
+        "kalori", "kalorit", "kilokalori", "kcal", "energia", "energiantarve",
+        "proteiini", "proteiinit", "prode", "hiilihydraatti", "hiilihydraatit", "hiilarit",
+        "rasva", "rasvat", "tyydyttynyt", "tyydyttymätön", "transrasva", "omega",
+        "sokeri", "sokerit", "piilosokeri", "fruktoosi", "kuitu", "kuidut",
+        "vitamiini", "vitamiinit", "ravintoaine", "ravintoaineet", "suojaravintoaine",
+        "kalsium", "rauta", "magnesium", "sinkki", "kalium", "natrium", "suola",
+        "antioksidantti", "antioksidantit", "hivenaine", "hivenaineet", "b12", "d-vitamiini",
+        "c-vitamiini", "foolihappo", "jodi", "dieetti", "ruokavalio", "ravinto", 
+        "ruokailutottumus", "keto", "karppaus", "vhh", "vähähiilihydraattinen", 
+        "pätkäpaasto", "paasto", "paleo", "gluteeniton", "maidoton", "laktoositon", 
+        "keliakia", "allergia", "allergeeni", "vehnätön", "aineenvaihdunta", 
+        "ruoansulatus", "suolisto", "mikrobiomi", "vatsa", "turvotus", "närästys", 
+        "tulehdus", "immuniteetti", "vastustuskyky", "palautuminen", "lihas", 
+        "lihakset", "kunto", "jaksaminen", "vireystila", "ravitseva", "kevytt", 
+        "kevyt", "rasvainen", "sokerinen", "suolainen", "myrkky", "lisäaine", 
+        "e-koodi", "keinotekoinen", "makeutusaine", "aspartaami", "puhdistava", 
+        "detox", "superfood", "tehotuote"
+    ]
+
+    sustainability_words = [
+        "ekologinen", "ekologisuus", "eko", "kestävä", "kestävyys", "ympäristö",
+        "ympäristöystävällinen", "ilmasto", "ilmastonmuutos", "ilmastokriisi",
+        "luonto", "luonnonsuojelu", "vihreä", "kierrätys", "hävikki", "ruokahävikki",
+        "päästö", "päästöt", "hiilijalanjälki", "hiilinielu", "vesijalanjälki",
+        "kasvihuonekaasu", "metaanipäästö", "metaani", "hiilidioksidi", "co2",
+        "saaste", "saastuminen", "ilmastoteko", "päästövähennys", "luomu", 
+        "luonnonmukainen", "lähiruoka", "kotimainen", "tuotantoeläin",
+        "tehotuotanto", "tehomaatalous", "maatalous", "viljely", "torjunta-aine",
+        "hyönteismyrkky", "glyfosaatti", "gmo", "geenimuunneltu", "monimuotoisuus",
+        "biodiversiteetti", "metsäkato", "sademetsä", "rehu", "soija", "palmuöljy",
+        "eettinen", "epäeettinen", "eläinten", "eläinoikeus", "eläinrääkkäys",
+        "eläinsuojelu", "häkkikanala", "vapaan", "laiduntava", "luomuliha",
+        "teuras", "teurastamo", "kärsimys", "eläinperäinen", "riisto", "reilu", 
+        "fairtrade", "vegaani", "vegaaninen", "veganismi", "kasvisruoka", 
+        "kasvissyönti", "kasvissyöjä", "kasvis", "kasvipohjainen", "plant-based", 
+        "vege", "lihankorvike", "nyhtökaura", "härkis", "soijarouhe", "tofu", 
+        "seitan", "kaurajuoma", "kauramaito", "mantelimaito", "kasvimaito", 
+        "ilmastodieetti", "pakkaus", "muovi", "muovipakkaus", "kierrätettävä", 
+        "biohajoava", "kertakäyttöinen", "mikromuovi", "kestopussi"
+    ]
+
+    # TRIGGER-SANAT (Pakottavat "Neutral" -> "Pro" tilaan)
+    pro_healthy_triggers = [
+        "ravintoaine", "ravintoaineet", "vitamiini", "terveyshyöty", 
+        "parantaa", "suojaa", "terveellisempi", "hyväksi", "terveydelle", "ravitseva"
     ]
     
-    sustainability_words = [
-        "luomu", "ekologinen", "kestävä", "ilmasto", "päästö", 
-        "lähiruoka", "ilmastonmuutos", "hiilijalanjälki", "vegaani", "kasvisruoka"
+    pro_sustainability_triggers = [
+        "ympäristöystävällinen", "kierrätettävä", "luonnonmukainen", 
+        "ilmastoteko", "päästövähennys", "hiilinielu"
     ]
 
     # 3. Tarkistetaan GPU
@@ -51,28 +98,34 @@ def run_sentiment_analysis():
     
     df['Sentiment'] = results
 
-    # 6. Opinion Mining - Luokittelu tehtävänannon mukaisesti
+    # 6. Opinion Mining - Luokittelu tehtävänannon mukaisesti (PÄIVITETTY)
     print("Luokitellaan laajennetut kategoriat (Health & Sustainability)...")
     
     def finalize_category(row):
         sentiment = row['Sentiment']
         text = str(row['content']).lower()
         
-        # Tarkistetaan kumpaan teemaan viesti liittyy
         is_health = any(word in text for word in health_words)
         is_sustainability = any(word in text for word in sustainability_words)
+        
+        has_pro_health_trigger = any(trigger in text for trigger in pro_healthy_triggers)
+        has_pro_sust_trigger = any(trigger in text for trigger in pro_sustainability_triggers)
 
         categories = []
         
         # Terveys-luokittelu
         if is_health:
-            if sentiment == 'Positive': categories.append('Pro-healthy')
-            elif sentiment == 'Negative': categories.append('Anti-healthy')
+            if sentiment == 'Positive' or (sentiment == 'Neutral' and has_pro_health_trigger): 
+                categories.append('Pro-healthy')
+            elif sentiment == 'Negative': 
+                categories.append('Anti-healthy')
             
         # Kestävyys-luokittelu (Skeptical = Negative asenne kestävyyttä kohtaan)
         if is_sustainability:
-            if sentiment == 'Positive': categories.append('Pro-sustainability')
-            elif sentiment == 'Negative': categories.append('Skeptical')
+            if sentiment == 'Positive' or (sentiment == 'Neutral' and has_pro_sust_trigger): 
+                categories.append('Pro-sustainability')
+            elif sentiment == 'Negative': 
+                categories.append('Skeptical')
             
         # Jos löydettiin luokkia, yhdistetään ne (esim. "Pro-healthy & Pro-sustainability")
         if categories:

@@ -14,40 +14,88 @@ def filter_and_combine_datasets():
     # Yhdistetyn lopputuloksen nimi
     output_file = data_dir / "suomi24_STRICT_food_data.csv"
 
-    # SÄÄNTÖ 1: Ruokaan ja syömiseen liittyvät sanat
     food_words = [
         "ruoka", "syödä", "söin", "syö ", "ateria", "ravinto", "juoda", "juoma", 
         "liha", "kasvis", "vegaani", "proteiini", "hiilihydraatti", "sokeri", 
-        "rasva", "maito", "leipä", "vihannes", "hedelmä", "kalori"
+        "rasva", "maito", "leipä", "vihannes", "hedelmä", "kalori", "kala", 
+        "kana", "juusto", "kananmuna", "vilja", "marja", "pähkinä", "herkku"
     ]
 
-    # SÄÄNTÖ 2: Terveyteen ja kestävyyteen liittyvät sanat
-    health_sustainability_words = [
-        "terveys", "terveellinen", "epäterveellinen", "luomu", "ekologinen", 
-        "kestävä", "ilmasto", "päästö", "lisäaine", "lähiruoka", "ilmastonmuutos",
-        "vitamiini", "dieetti", "ruokavalio", "ravintoarvo", "hiilijalanjälki"
+
+    health_words = [
+        "terveys", "terveellinen", "epäterveellinen", "hyvinvointi", "terveellisyys",
+        "terveydelle", "terveyshyöty", "sairaus", "oire", "lääkäri", "verenpaine",
+        "kolesteroli", "verensokeri", "sydäntauti", "diabetes", "ylipaino", "lihavuus",
+        "laihdutus", "painonhallinta", "laihtua", "laihduttaa", "terveemmin", "terveempi",
+        "kalori", "kalorit", "kilokalori", "kcal", "energia", "energiantarve",
+        "proteiini", "proteiinit", "prode", "hiilihydraatti", "hiilihydraatit", "hiilarit",
+        "rasva", "rasvat", "tyydyttynyt", "tyydyttymätön", "transrasva", "omega",
+        "sokeri", "sokerit", "piilosokeri", "fruktoosi", "kuitu", "kuidut",
+        "vitamiini", "vitamiinit", "ravintoaine", "ravintoaineet", "suojaravintoaine",
+        "kalsium", "rauta", "magnesium", "sinkki", "kalium", "natrium", "suola",
+        "antioksidantti", "antioksidantit", "hivenaine", "hivenaineet", "b12", "d-vitamiini",
+        "c-vitamiini", "foolihappo", "jodi", "dieetti", "ruokavalio", "ravinto", 
+        "ruokailutottumus", "keto", "karppaus", "vhh", "vähähiilihydraattinen", 
+        "pätkäpaasto", "paasto", "paleo", "gluteeniton", "maidoton", "laktoositon", 
+        "keliakia", "allergia", "allergeeni", "vehnätön", "aineenvaihdunta", 
+        "ruoansulatus", "suolisto", "mikrobiomi", "vatsa", "turvotus", "närästys", 
+        "tulehdus", "immuniteetti", "vastustuskyky", "palautuminen", "lihas", 
+        "lihakset", "kunto", "jaksaminen", "vireystila", "ravitseva", "kevytt", 
+        "kevyt", "rasvainen", "sokerinen", "suolainen", "myrkky", "lisäaine", 
+        "e-koodi", "keinotekoinen", "makeutusaine", "aspartaami", "puhdistava", 
+        "detox", "superfood", "tehotuote"
     ]
 
-    # SÄÄNTÖ 3: MUSTA LISTA
+    sustainability_words = [
+        "ekologinen", "ekologisuus", "eko", "kestävä", "kestävyys", "ympäristö",
+        "ympäristöystävällinen", "ilmasto", "ilmastonmuutos", "ilmastokriisi",
+        "luonto", "luonnonsuojelu", "vihreä", "kierrätys", "hävikki", "ruokahävikki",
+        "päästö", "päästöt", "hiilijalanjälki", "hiilinielu", "vesijalanjälki",
+        "kasvihuonekaasu", "metaanipäästö", "metaani", "hiilidioksidi", "co2",
+        "saaste", "saastuminen", "ilmastoteko", "päästövähennys", "luomu", 
+        "luonnonmukainen", "lähiruoka", "kotimainen", "tuotantoeläin",
+        "tehotuotanto", "tehomaatalous", "maatalous", "viljely", "torjunta-aine",
+        "hyönteismyrkky", "glyfosaatti", "gmo", "geenimuunneltu", "monimuotoisuus",
+        "biodiversiteetti", "metsäkato", "sademetsä", "rehu", "soija", "palmuöljy",
+        "eettinen", "epäeettinen", "eläinten", "eläinoikeus", "eläinrääkkäys",
+        "eläinsuojelu", "häkkikanala", "vapaan", "laiduntava", "luomuliha",
+        "teuras", "teurastamo", "kärsimys", "eläinperäinen", "riisto", "reilu", 
+        "fairtrade", "vegaani", "vegaaninen", "veganismi", "kasvisruoka", 
+        "kasvissyönti", "kasvissyöjä", "kasvis", "kasvipohjainen", "plant-based", 
+        "vege", "lihankorvike", "nyhtökaura", "härkis", "soijarouhe", "tofu", 
+        "seitan", "kaurajuoma", "kauramaito", "mantelimaito", "kasvimaito", 
+        "ilmastodieetti", "pakkaus", "muovi", "muovipakkaus", "kierrätettävä", 
+        "biohajoava", "kertakäyttöinen", "mikromuovi", "kestopussi"
+    ]
+
     blacklist_words = [
-        "rokote", "rokotus", "korona", "covid", "thl", "maski", 
+        "rokote", "rokotus", "korona", "covid", "thl", "maski", "mdna", 
+        "foliohattu", "myrkkypiikki", "pakkorokotus", "pandemia", "tartunta",
         "auto", "bensa", "diesel", "sähköauto", "akku", "lataus", "volvo", 
-        "upm", "lakko", "tehdas", "porvari", "duunari", 
-        "huora", "seksi", "thaimaa", "lesbo", "homo", 
-        "jumala", "paavali", "uskonto"
+        "polttomoottori", "etuveto", "takaveto", "ajokortti", "kuljettaja",
+        "tuulienergia", "aurinkopaneeli",
+        "upm", "lakko", "tehdas", "porvari", "duunari", "rikkuri", 
+        "sijoittaja", "valtiovalta", "havupuu", "pesonen", "ay-liike", "tes",
+        "huora", "seksi", "thaimaa", "lesbo", "homo", "nussia", "perse", 
+        "deittailu", "tinder", "seksitykkäys", "huorintekijä", "sateenkaarilippu",
+        "jumala", "paavali", "uskonto", "evankeliumi", "lahko", "jeesus", 
+        "seurakunta", "alkuräjähdys", "luomiskertomus",
+        "hiv", "aids", "kupan", "tippuri"
     ]
 
     def is_relevant(text):
         if any(bad_word in text for bad_word in blacklist_words):
             return False
+            
         has_food = any(food_word in text for food_word in food_words)
-        has_health = any(health_word in text for health_word in health_sustainability_words)
-        return has_food and has_health
+        has_health_or_sust = any(word in text for word in health_words + sustainability_words)
+        
+        return has_food and has_health_or_sust
 
-    all_filtered_dfs = [] # Tähän listaan kerätään kaikkien vuosien suodatetut datat
+    all_filtered_dfs = []
     total_original = 0
 
-    print("Aloitetaan datan suodatus ja yhdistäminen...")
+    print("Aloitetaan datan suodatus ja yhdistäminen uusilla laajoilla sanalistoilla...")
 
     for filename in input_files:
         input_path = data_dir / filename
