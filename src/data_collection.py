@@ -36,10 +36,20 @@ def _print_progress(filename: str, pct: float, lines: int, matches: int,
     sys.stderr.write(f"\r{content[:width]}\033[K")
     sys.stderr.flush()
 
+def _read_csv_robust(filepath, **kwargs) -> "pd.DataFrame":
+    """Read a CSV trying UTF-8 (with BOM), then cp1252, then latin-1 as last resort."""
+    for enc in ("utf-8-sig", "cp1252"):
+        try:
+            return pd.read_csv(filepath, encoding=enc, **kwargs)
+        except UnicodeDecodeError:
+            continue
+    return pd.read_csv(filepath, encoding="latin-1", **kwargs)
+
+
 def load_keywords(filepath):
     """Loads keywords from a CSV and returns a clean set."""
     try:
-        df = pd.read_csv(filepath, header=None)
+        df = _read_csv_robust(filepath, header=None)
         return set(df[0].astype(str).str.strip().str.lower().tolist())
     except Exception as e:
         print(f"Error loading keywords: {e}")
@@ -136,7 +146,7 @@ def parse_vrt_for_project_8(vrt_filepath, keyword_set, output_filepath):
     start_time = time.time()
     last_progress_time = start_time
 
-    with open(vrt_filepath, 'r', encoding='utf-8') as f_in, \
+    with open(vrt_filepath, 'r', encoding='utf-8', errors='replace') as f_in, \
             open(output_filepath, 'w', encoding='utf-8') as f_out:
 
         f_out.write("thread_id,post_id,user_id,section,timestamp,content,matched_keywords\n")

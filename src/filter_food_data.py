@@ -1,6 +1,16 @@
 import pandas as pd
 from pathlib import Path
 
+
+def _read_csv_robust(filepath, **kwargs) -> pd.DataFrame:
+    """Read a CSV trying UTF-8 (with BOM), then cp1252, then latin-1 as last resort."""
+    for enc in ("utf-8-sig", "cp1252"):
+        try:
+            return pd.read_csv(filepath, encoding=enc, **kwargs)
+        except UnicodeDecodeError:
+            continue
+    return pd.read_csv(filepath, encoding="latin-1", **kwargs)
+
 def filter_and_combine_datasets():
     BASE_DIR = Path(__file__).resolve().parent.parent
     data_dir = BASE_DIR / "data"
@@ -107,7 +117,7 @@ def filter_and_combine_datasets():
         print(f"\nKäsitellään: {filename}")
         
         # Ladataan data
-        df = pd.read_csv(input_path, encoding="utf-8")
+        df = _read_csv_robust(input_path)
         original_len = len(df)
         total_original += original_len
         
