@@ -246,26 +246,63 @@ def plot_sentiment_distribution(df: pd.DataFrame, output_path: Path) -> None:
     if "sentiment" not in df.columns:
         return
 
-    counts = df["sentiment"].value_counts()
-    colors = {"positive": "#2ecc71", "negative": "#e74c3c", "neutral": "#95a5a6"}
+    has_opinion = "opinion_category" in df.columns
 
-    fig, ax = plt.subplots(figsize=(6, 4))
-    bars = ax.bar(
-        counts.index,
-        counts.values,
-        color=[colors.get(s, "steelblue") for s in counts.index],
+    _SENTIMENT_COLORS = {
+        "positive": "#a6e3a1",
+        "negative": "#f38ba8",
+        "neutral":  "#6c7086",
+    }
+    _OPINION_COLORS = {
+        "pro-healthy":        "#a6e3a1",
+        "anti-healthy":       "#f38ba8",
+        "pro-sustainability": "#94e2d5",
+        "skeptical":          "#fab387",
+        "neutral":            "#6c7086",
+        "positive":           "#89b4fa",
+        "negative":           "#f38ba8",
+    }
+
+    def _annotate(ax, bars, values):
+        for bar, val in zip(bars, values):
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height() * 1.01,
+                f"{val:,}",
+                ha="center", va="bottom", fontsize=8,
+            )
+
+    if has_opinion:
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
+    else:
+        fig, ax1 = plt.subplots(figsize=(6, 5))
+        ax2 = None
+
+    # Left panel: FinBERT base sentiment (Positive / Negative / Neutral)
+    sent_counts = df["sentiment"].str.lower().value_counts()
+    bars1 = ax1.bar(
+        sent_counts.index,
+        sent_counts.values,
+        color=[_SENTIMENT_COLORS.get(s, "#89b4fa") for s in sent_counts.index],
     )
-    for bar, val in zip(bars, counts.values):
-        ax.text(
-            bar.get_x() + bar.get_width() / 2,
-            bar.get_height() * 1.01,
-            f"{val:,}",
-            ha="center",
-            va="bottom",
-            fontsize=9,
+    _annotate(ax1, bars1, sent_counts.values)
+    ax1.set_title("FinBERT Sentiment")
+    ax1.set_ylabel("Posts")
+
+    # Right panel: Opinion categories
+    if has_opinion:
+        op_counts = df["opinion_category"].value_counts()
+        bars2 = ax2.bar(
+            op_counts.index,
+            op_counts.values,
+            color=[_OPINION_COLORS.get(c.lower(), "#cba6f7") for c in op_counts.index],
         )
-    ax.set_title("Sentiment Distribution")
-    ax.set_ylabel("Sentences")
+        _annotate(ax2, bars2, op_counts.values)
+        ax2.set_title("Opinion Category")
+        ax2.set_ylabel("Posts")
+        ax2.tick_params(axis="x", rotation=30)
+
+    fig.tight_layout()
     _save(fig, output_path)
 
 

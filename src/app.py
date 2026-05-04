@@ -7,6 +7,7 @@ Usage (from project root):
 """
 
 import json
+import os
 import subprocess
 import sys
 import threading
@@ -20,6 +21,11 @@ BASE_DIR    = Path(__file__).resolve().parent.parent
 DATA_DIR    = BASE_DIR / "data"
 SRC_DIR     = BASE_DIR / "src"
 OUTPUTS_DIR = BASE_DIR / "outputs"
+
+# Use venv Python when available so subprocesses inherit installed packages
+_venv = os.environ.get("VIRTUAL_ENV")
+_PYTHON = str(Path(_venv) / "bin" / "python3") if _venv and Path(_venv).exists() else sys.executable
+_MAIN_PY = str(SRC_DIR / "main.py")
 
 # ── Catppuccin Mocha palette ──────────────────────────────────────────────────
 BG     = "#1e1e2e"
@@ -284,6 +290,23 @@ class App(tk.Tk):
         lbl.pack(**pack_kw)
         return lbl
 
+    def _init_step_statuses(self) -> None:
+        """Set step status labels at startup based on which output files already exist."""
+        filtered = list(DATA_DIR.glob("suomi24_filtered_data_*.csv")) if DATA_DIR.exists() else []
+        strict   = DATA_DIR / "suomi24_STRICT_food_data.csv"
+        sentiment = DATA_DIR / "suomi24_sentiment_FINAL_results.csv"
+
+        def _set(lbl: tk.Label, done: bool, detail: str = "") -> None:
+            if done:
+                lbl.config(text=f"Done  {detail}".strip(), fg=GREEN)
+            else:
+                lbl.config(text="Not done", fg=FG_DIM)
+
+        _set(self._dc_status, bool(filtered),
+             f"({len(filtered)} file(s))" if filtered else "")
+        _set(self._ff_status, strict.exists())
+        _set(self._fb_status, sentiment.exists())
+
     # ── Plot image embed ───────────────────────────────────────────────────────
 
     def _embed_image(self, parent: tk.Frame, img_path: Path) -> None:
@@ -419,6 +442,8 @@ class App(tk.Tk):
         self._fb_log = self._textbox(left, height=4, scrollbar=True,
                                      fill=tk.X, pady=(0, 8))
         self._fb_log.config(state=tk.NORMAL)
+
+        self._init_step_statuses()
 
         # ── Right column ─────────────────────────────────────────────────
         right = tk.Frame(parent, bg=BG)
@@ -615,17 +640,17 @@ class App(tk.Tk):
 
     def _run_data_collection(self) -> None:
         self._run_subprocess(
-            [sys.executable, str(SRC_DIR / "data_collection.py")],
+            [_PYTHON, str(SRC_DIR / "data_collection.py")],
             self._dc_log, self._dc_status)
 
     def _run_filter_food(self) -> None:
         self._run_subprocess(
-            [sys.executable, str(SRC_DIR / "filter_food_data.py")],
+            [_PYTHON, str(SRC_DIR / "filter_food_data.py")],
             self._ff_log, self._ff_status)
 
     def _run_finbert(self) -> None:
         self._run_subprocess(
-            [sys.executable, str(SRC_DIR / "sentiment_analysis.py")],
+            [_PYTHON, str(SRC_DIR / "sentiment_analysis.py")],
             self._fb_log, self._fb_status)
 
     # ── Single config run ─────────────────────────────────────────────────────
@@ -641,7 +666,7 @@ class App(tk.Tk):
 
         self._run_btn.config(state=tk.DISABLED)
         cmd = [
-            sys.executable, str(SRC_DIR / "main.py"),
+            _PYTHON, _MAIN_PY,
             "--threshold", threshold,
             "--max-threads", threads,
             "--min-posts", min_posts,
@@ -650,7 +675,7 @@ class App(tk.Tk):
 
         def _on_done():
             self._run_btn.config(state=tk.NORMAL)
-            self._refresh_completed_dropdown()
+            self._on_run_success(label)
 
         self._run_subprocess(cmd, self._run_log, self._run_status,
                              done_cb=_on_done)
@@ -663,6 +688,12 @@ class App(tk.Tk):
         self._cfg_dropdown["values"] = configs
         if configs and not self._cfg_var.get():
             self._cfg_var.set(configs[0])
+
+    def _on_run_success(self, label: str) -> None:
+        """Called on the main thread after any pipeline run succeeds."""
+        self._refresh_completed_dropdown()
+        self._cfg_var.set(label)
+        self._rebuild_plot_pages()
 
     # ── Schedule queue ────────────────────────────────────────────────────────
 
@@ -740,7 +771,7 @@ class App(tk.Tk):
                 item["status"] = "running"
 
                 cmd = [
-                    sys.executable, str(SRC_DIR / "main.py"),
+                    _PYTHON, _MAIN_PY,
                     "--threshold", threshold,
                     "--max-threads", threads,
                     "--min-posts", min_posts,
@@ -760,6 +791,7 @@ class App(tk.Tk):
                         item["status"] = "done"
                         self.after(0, lambda l=label: self._queue_set_status(
                             l, "done", "green"))
+                        self.after(0, lambda l=label: self._on_run_success(l))
                     elif rc in (-9, 137):
                         # OOM: retry with halved thread count
                         halved = str(max(100, int(threads) // 2))
@@ -768,7 +800,7 @@ class App(tk.Tk):
                         self.after(0, lambda l=label: self._queue_set_status(
                             l, f"OOM retry {halved}", "yellow"))
                         retry_cmd = [
-                            sys.executable, str(SRC_DIR / "main.py"),
+                            _PYTHON, _MAIN_PY,
                             "--threshold", threshold,
                             "--max-threads", halved,
                             "--min-posts", min_posts,
@@ -785,6 +817,7 @@ class App(tk.Tk):
                             item["status"] = "done"
                             self.after(0, lambda l=label: self._queue_set_status(
                                 l, "done (retry)", "green"))
+                            self.after(0, lambda l=label: self._on_run_success(l))
                         else:
                             item["status"] = "failed"
                             self.after(0, lambda l=label: self._queue_set_status(

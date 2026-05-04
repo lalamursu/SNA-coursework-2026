@@ -92,35 +92,53 @@ STEPS = [
 _SKIP_DIRS = {"venv", ".git", "__pycache__", "node_modules"}
 
 
-def _find_filtered_csvs(base: Path) -> list[Path]:
-    results = []
-    for p in base.rglob("suomi24_sentiment_FINAL_results.csv"):
-        if not any(skip in p.parts for skip in _SKIP_DIRS):
-            results.append(p)
-    return sorted(results)
-
-
 def _load_data() -> pd.DataFrame:
-    candidates = _find_filtered_csvs(BASE_DIR)
-    if not candidates:
-        raise FileNotFoundError(
-            f"No suomi24_filtered_data_*.csv found under {BASE_DIR}.\n"
-            "Run src/data_collection.py first."
-        )
-    if len(candidates) == 1:
-        print(f"Loading: {candidates[0].relative_to(BASE_DIR)}")
-        df = pd.read_csv(candidates[0], dtype=str)
+    """Load best available data using priority: FinBERT > strict filter > filtered CSVs."""
+
+    def _skip(p: Path) -> bool:
+        return any(s in p.parts for s in _SKIP_DIRS)
+
+    # Priority 1: FinBERT sentiment output (richest — has Sentiment + Opinion_Category)
+    sentiment_files = [p for p in BASE_DIR.rglob("suomi24_sentiment_FINAL_results.csv") if not _skip(p)]
+    if sentiment_files:
+        p = min(sentiment_files)
+        print(f"Loading FinBERT sentiment output: {p.relative_to(BASE_DIR)}")
+        df = pd.read_csv(p, dtype=str)
+        # Normalize column names so the rest of the pipeline finds them
+        rename = {}
+        if "Sentiment" in df.columns and "sentiment" not in df.columns:
+            rename["Sentiment"] = "sentiment"
+        if "Opinion_Category" in df.columns and "opinion_category" not in df.columns:
+            rename["Opinion_Category"] = "opinion_category"
+        if rename:
+            df = df.rename(columns=rename)
         print(f"  Rows: {len(df):,}  Columns: {list(df.columns)}")
         return df
 
-    print(f"Merging {len(candidates)} filtered CSV(s):")
-    frames = []
-    for p in candidates:
-        print(f"  {p.relative_to(BASE_DIR)}")
-        frames.append(pd.read_csv(p, dtype=str))
-    df = pd.concat(frames, ignore_index=True)
-    print(f"  Total rows: {len(df):,}")
-    return df
+    # Priority 2: strict food filter output
+    strict = DATA_DIR / "suomi24_STRICT_food_data.csv"
+    if strict.exists():
+        print(f"Loading strict food filter output: {strict.relative_to(BASE_DIR)}")
+        df = pd.read_csv(strict, dtype=str)
+        print(f"  Rows: {len(df):,}  Columns: {list(df.columns)}")
+        return df
+
+    # Priority 3: raw filtered CSVs (one per VRT year file), merged
+    filtered = sorted(p for p in BASE_DIR.rglob("suomi24_filtered_data_*.csv") if not _skip(p))
+    if filtered:
+        print(f"Merging {len(filtered)} filtered CSV(s):")
+        frames = []
+        for p in filtered:
+            print(f"  {p.relative_to(BASE_DIR)}")
+            frames.append(pd.read_csv(p, dtype=str))
+        df = pd.concat(frames, ignore_index=True)
+        print(f"  Total rows: {len(df):,}")
+        return df
+
+    raise FileNotFoundError(
+        f"No input data found under {BASE_DIR}.\n"
+        "Run src/data_collection.py first, then optionally filter_food_data.py and sentiment_analysis.py."
+    )
 
 
 def _print_stats(stats: dict) -> None:
@@ -206,7 +224,7 @@ def _run_pipeline(  # noqa: C901
     t.start_step(1)
     if "sentiment" not in df.columns:
         df = add_sentiment_to_df(df)
-        plot_sentiment_distribution(df, plots_dir / "sentiment_distribution.png")
+    plot_sentiment_distribution(df, plots_dir / "sentiment_distribution.png")
 
     # ══════════════════════════════════════════════════════════════════════
     # Step 5  Thread Similarity Network
