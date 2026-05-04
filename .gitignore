@@ -26,6 +26,12 @@ env/
 *.tar.gz
 *.bz2
 
+# Kuvatiedostot ja lokit
+*.png
+*.jpg
+*.jpeg
+*.log
+
 # Ignorataan verkostoanalyysin vientitiedostot
 *.gexf
 *.graphml
@@ -35,6 +41,8 @@ env/
 raw_data/
 processed_data/
 output/
+outputs/
+data/
 
 # ==========================================
 # Koneoppimismallit (Task 4 Asenneanalyysi)

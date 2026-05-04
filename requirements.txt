@@ -1,0 +1,17 @@
+# Core pipeline (src/main.py, network_builder.py, network_analysis.py, visualization.py)
+matplotlib==3.10.9
+networkx==3.6.1
+numpy==2.4.4
+pandas==3.0.2
+python-louvain==0.16
+scikit-learn==1.8.0
+
+# GUI (src/app.py)
+Pillow==12.2.0
+
+# Optional — FinBERT sentiment analysis (src/sentiment_analysis.py)
+# Install with: pip install torch transformers tqdm
+# Requires NVIDIA GPU for reasonable performance; falls back to CPU automatically.
+# torch==2.11.0
+# transformers==5.7.0
+# tqdm==4.67.3
