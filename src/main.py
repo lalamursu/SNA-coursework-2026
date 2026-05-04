@@ -94,7 +94,7 @@ _SKIP_DIRS = {"venv", ".git", "__pycache__", "node_modules"}
 
 def _find_filtered_csvs(base: Path) -> list[Path]:
     results = []
-    for p in base.rglob("suomi24_filtered_data_*.csv"):
+    for p in base.rglob("suomi24_sentiment_FINAL_results.csv"):
         if not any(skip in p.parts for skip in _SKIP_DIRS):
             results.append(p)
     return sorted(results)
