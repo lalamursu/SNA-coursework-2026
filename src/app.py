@@ -139,7 +139,12 @@ def _data_summary() -> str:
     if strict.exists():
         try:
             import pandas as pd
-            n = len(pd.read_csv(strict, usecols=[0]))
+            for _enc in ("utf-8-sig", "cp1252", "latin-1"):
+                try:
+                    n = len(pd.read_csv(strict, usecols=[0], encoding=_enc))
+                    break
+                except UnicodeDecodeError:
+                    continue
             lines.append(f"\nStrict food filter output: {n:,} rows  ({strict.name})")
         except Exception:
             lines.append(f"\nStrict food filter output exists: {strict.name}")

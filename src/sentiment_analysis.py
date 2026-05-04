@@ -1,6 +1,16 @@
 import pandas as pd
 from pathlib import Path
 
+
+def _read_csv_robust(filepath, **kwargs) -> pd.DataFrame:
+    """Try UTF-8 (with BOM), then cp1252, then latin-1 — handles files from any OS."""
+    for enc in ("utf-8-sig", "cp1252"):
+        try:
+            return pd.read_csv(filepath, encoding=enc, **kwargs)
+        except UnicodeDecodeError:
+            continue
+    return pd.read_csv(filepath, encoding="latin-1", **kwargs)
+
 try:
     import torch
     from transformers import pipeline
@@ -124,7 +134,7 @@ def run_sentiment_analysis() -> None:
         device=device,
     )
 
-    df = pd.read_csv(input_file)
+    df = _read_csv_robust(input_file)
     print(f"Ladattu {len(df)} riviä puhdasta ruokadataa.")
 
     print("Analysoidaan asenteet (batch_size=64)...")

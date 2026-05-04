@@ -92,6 +92,16 @@ STEPS = [
 _SKIP_DIRS = {"venv", ".git", "__pycache__", "node_modules"}
 
 
+def _read_csv_robust(filepath, **kwargs) -> pd.DataFrame:
+    """Try UTF-8 (with BOM), then cp1252, then latin-1 — handles files from any OS."""
+    for enc in ("utf-8-sig", "cp1252"):
+        try:
+            return pd.read_csv(filepath, encoding=enc, **kwargs)
+        except UnicodeDecodeError:
+            continue
+    return pd.read_csv(filepath, encoding="latin-1", **kwargs)
+
+
 def _load_data() -> pd.DataFrame:
     """Load best available data using priority: FinBERT > strict filter > filtered CSVs."""
 
@@ -103,7 +113,7 @@ def _load_data() -> pd.DataFrame:
     if sentiment_files:
         p = min(sentiment_files)
         print(f"Loading FinBERT sentiment output: {p.relative_to(BASE_DIR)}")
-        df = pd.read_csv(p, dtype=str, encoding="utf-8")
+        df = _read_csv_robust(p, dtype=str)
         # Normalize column names so the rest of the pipeline finds them
         rename = {}
         if "Sentiment" in df.columns and "sentiment" not in df.columns:
@@ -119,7 +129,7 @@ def _load_data() -> pd.DataFrame:
     strict = DATA_DIR / "suomi24_STRICT_food_data.csv"
     if strict.exists():
         print(f"Loading strict food filter output: {strict.relative_to(BASE_DIR)}")
-        df = pd.read_csv(strict, dtype=str, encoding="utf-8")
+        df = _read_csv_robust(strict, dtype=str)
         print(f"  Rows: {len(df):,}  Columns: {list(df.columns)}")
         return df
 
@@ -130,7 +140,7 @@ def _load_data() -> pd.DataFrame:
         frames = []
         for p in filtered:
             print(f"  {p.relative_to(BASE_DIR)}")
-            frames.append(pd.read_csv(p, dtype=str, encoding="utf-8"))
+            frames.append(_read_csv_robust(p, dtype=str))
         df = pd.concat(frames, ignore_index=True)
         print(f"  Total rows: {len(df):,}")
         return df
