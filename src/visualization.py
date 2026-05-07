@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import matplotlib.lines as mlines
 import networkx as nx
 import numpy as np
 import pandas as pd
@@ -303,6 +304,154 @@ def plot_sentiment_distribution(df: pd.DataFrame, output_path: Path) -> None:
         ax2.tick_params(axis="x", rotation=30)
 
     fig.tight_layout()
+    _save(fig, output_path)
+
+
+# ── Temporal analysis (Step 3) ────────────────────────────────────────────────
+
+_HEALTH_KW = {
+    "terveellinen", "terveys", "ravitseva", "vitamiini", "kuitu", "proteiini",
+    "vähärasvainen", "sokeriton", "epäterveellinen", "roskaruoka", "pikaruoka",
+    "rasvainen", "sokeri", "lisäaine", "eines", "valmisruoka", "karkki", "sipsi",
+    "limu", "mikroateria", "ravintoarvo", "kalori", "kilokalori", "hiilihydraatti", "rasva",
+}
+
+_SUSTAIN_KW = {
+    "kestävä", "ekologinen", "luomu", "lähiruoka", "kasvisruoka", "vegaani",
+    "vegaaninen", "kasvipohjainen", "ilmasto", "ilmastovaikutus", "hiilijalanjälki",
+    "liha", "lihansyönti", "punainen liha", "nauta", "sika", "broileri",
+}
+
+
+def _kw_list(kw_str) -> list[str]:
+    if pd.isna(kw_str) or not str(kw_str).strip():
+        return []
+    return [k.strip() for k in str(kw_str).split(",") if k.strip()]
+
+
+def plot_temporal_analysis(df: pd.DataFrame, plots_dir: Path) -> None:
+    """Step 3: keyword frequency over time and health vs sustainability comparison."""
+    if "timestamp" not in df.columns or "matched_keywords" not in df.columns:
+        print("  Skipping temporal analysis: missing timestamp or matched_keywords column")
+        return
+
+    df_t = df.copy()
+    df_t["_ts"] = pd.to_datetime(df_t["timestamp"], errors="coerce")
+    df_t = df_t.dropna(subset=["_ts"])
+    if df_t.empty:
+        print("  Skipping temporal analysis: no parseable timestamps")
+        return
+
+    df_t["_month"] = df_t["_ts"].dt.to_period("M")
+
+    # ── Plot 1: monthly total post count ──────────────────────────────────────
+    monthly = df_t.groupby("_month").size()
+    x_ts = monthly.index.to_timestamp()
+
+    fig, ax = plt.subplots(figsize=(12, 5))
+    ax.plot(x_ts, monthly.values, marker="o", linewidth=1.8, markersize=3, color="steelblue")
+    ax.fill_between(x_ts, monthly.values, alpha=0.15, color="steelblue")
+    ax.set_xlabel("Month")
+    ax.set_ylabel("Posts")
+    ax.set_title("Monthly Post Frequency — Food & Health Discussions (Suomi24 2021–2023)")
+    ax.grid(axis="y", alpha=0.35)
+    plt.xticks(rotation=30, ha="right")
+    plt.tight_layout()
+    _save(fig, plots_dir / "temporal_freq.png")
+
+    # ── Plot 2: health vs sustainability over time ─────────────────────────────
+    def _has_kw(series: pd.Series, kw_set: set) -> pd.Series:
+        return series.apply(lambda s: bool(set(_kw_list(s)) & kw_set))
+
+    df_t["_health"] = _has_kw(df_t["matched_keywords"], _HEALTH_KW)
+    df_t["_sust"]   = _has_kw(df_t["matched_keywords"], _SUSTAIN_KW)
+
+    h_monthly = df_t[df_t["_health"]].groupby("_month").size()
+    s_monthly = df_t[df_t["_sust"]].groupby("_month").size()
+
+    all_months = sorted(set(h_monthly.index) | set(s_monthly.index))
+    x2 = pd.PeriodIndex(all_months).to_timestamp()
+    h_vals = [int(h_monthly.get(m, 0)) for m in all_months]
+    s_vals = [int(s_monthly.get(m, 0)) for m in all_months]
+
+    fig, ax = plt.subplots(figsize=(12, 5))
+    ax.plot(x2, h_vals, label="Health-related", color="#a6e3a1",
+            marker="o", markersize=3, linewidth=1.8)
+    ax.plot(x2, s_vals, label="Sustainability-related", color="#94e2d5",
+            marker="s", markersize=3, linewidth=1.8)
+    ax.fill_between(x2, h_vals, alpha=0.12, color="#a6e3a1")
+    ax.fill_between(x2, s_vals, alpha=0.12, color="#94e2d5")
+    ax.set_xlabel("Month")
+    ax.set_ylabel("Posts")
+    ax.set_title("Health vs Sustainability Discussion Volume Over Time")
+    ax.legend()
+    ax.grid(axis="y", alpha=0.35)
+    plt.xticks(rotation=30, ha="right")
+    plt.tight_layout()
+    _save(fig, plots_dir / "temporal_health_vs_sust.png")
+
+    print(f"  Temporal range: {df_t['_ts'].min().date()} – {df_t['_ts'].max().date()}")
+    print(f"  Health posts: {df_t['_health'].sum():,}  Sustainability posts: {df_t['_sust'].sum():,}")
+
+
+# ── Bipartite network visualization (Step 7) ──────────────────────────────────
+
+def plot_bipartite_network(
+    graph: nx.Graph,
+    output_path: Path,
+    max_users: int = 60,
+) -> None:
+    """Bipartite layout: top-N users (right) ↔ all topic nodes (left)."""
+    user_nodes  = [n for n, d in graph.nodes(data=True)
+                   if d.get("bipartite") == 0 and graph.degree(n) > 0]
+    topic_nodes = [n for n, d in graph.nodes(data=True) if d.get("bipartite") == 1]
+
+    if not user_nodes or not topic_nodes:
+        return
+
+    top_users = sorted(user_nodes, key=lambda n: graph.degree(n), reverse=True)[:max_users]
+    g_plot = graph.subgraph(set(top_users) | set(topic_nodes)).copy()
+
+    n_t = len(topic_nodes)
+    n_u = len(top_users)
+    pos = {}
+    for i, t in enumerate(sorted(topic_nodes)):
+        pos[t] = (0.0, i / max(n_t - 1, 1))
+    for i, u in enumerate(top_users):
+        pos[u] = (1.0, i / max(n_u - 1, 1))
+
+    node_colors = [
+        "#89b4fa" if g_plot.nodes[n].get("bipartite") == 1 else "#a6e3a1"
+        for n in g_plot.nodes()
+    ]
+    node_sizes = [
+        220 if g_plot.nodes[n].get("bipartite") == 1 else 35
+        for n in g_plot.nodes()
+    ]
+
+    fig, ax = plt.subplots(figsize=(14, 10))
+    nx.draw_networkx(
+        g_plot, pos=pos, ax=ax,
+        node_size=node_sizes, node_color=node_colors,
+        edge_color="gray", alpha=0.55,
+        with_labels=False, width=0.15,
+    )
+    topic_sub = {n: pos[n] for n in topic_nodes if n in g_plot}
+    nx.draw_networkx_labels(g_plot.subgraph(list(topic_sub)), pos=topic_sub,
+                            ax=ax, font_size=7)
+
+    handles = [
+        mlines.Line2D([], [], marker="o", color="w", markerfacecolor="#89b4fa",
+                      markersize=10, label="Topic (keyword)"),
+        mlines.Line2D([], [], marker="o", color="w", markerfacecolor="#a6e3a1",
+                      markersize=8, label=f"User (top {n_u} by degree)"),
+    ]
+    ax.legend(handles=handles, loc="upper center")
+    ax.set_title(
+        f"Bipartite User–Topic Graph  ({len(user_nodes):,} users, {n_t} topics)"
+        f"\n(showing top {n_u} users by degree)"
+    )
+    ax.axis("off")
     _save(fig, output_path)
 
 

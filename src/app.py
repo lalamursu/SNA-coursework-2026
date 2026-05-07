@@ -54,27 +54,37 @@ MAUVE  = "#cba6f7"
 # Each entry becomes one viewer page; images are displayed side-by-side (≤2).
 PLOT_PAGES = [
     ("Sentiment distribution",
-    ["sentiment_distribution.png"]),
+     ["sentiment_distribution.png"]),
+    ("Step 3 — Temporal: monthly frequency",
+     ["temporal_freq.png"]),
+    ("Step 3 — Temporal: health vs sustainability over time",
+     ["temporal_health_vs_sust.png"]),
     ("Step 5 — Thread Similarity: network & degree",
-    ["network_thread.png", "degree_dist_thread.png"]),
+     ["network_thread.png", "degree_dist_thread.png"]),
     ("Step 5 — Thread Similarity: communities & k-core",
-    ["communities_thread.png", "kcore_thread.png"]),
+     ["communities_thread.png", "kcore_thread.png"]),
     ("Step 5 — Thread Similarity: centrality & k-core distribution",
-    ["centrality_thread.png", "kcore_dist_thread.png"]),
+     ["centrality_thread.png", "kcore_dist_thread.png"]),
     ("Step 6 — User Interaction: network & degree",
-    ["network_user.png", "degree_dist_user.png"]),
+     ["network_user.png", "degree_dist_user.png"]),
     ("Step 6 — User Interaction: communities & sentiment",
-    ["communities_user.png", "community_sentiment_user.png"]),
+     ["communities_user.png", "community_sentiment_user.png"]),
     ("Step 6 — User Interaction: centrality & k-core",
-    ["centrality_user.png", "kcore_user.png"]),
+     ["centrality_user.png", "kcore_user.png"]),
     ("Step 6 — User Interaction: k-core distribution",
-    ["kcore_dist_user.png"]),
+     ["kcore_dist_user.png"]),
+    ("Step 7 — Bipartite: user–topic graph",
+     ["network_bipartite.png"]),
+    ("Step 7 — Bipartite: user projection network & degree",
+     ["network_user_proj.png", "degree_dist_user_proj.png"]),
+    ("Step 7 — Bipartite: user projection centrality",
+     ["centrality_user_proj.png"]),
     ("Step 7 — Topic Co-occurrence: network & degree",
-    ["network_topic.png", "degree_dist_topic.png"]),
+     ["network_topic.png", "degree_dist_topic.png"]),
     ("Step 7 — Topic Co-occurrence: centrality & k-core distribution",
-    ["centrality_topic.png", "kcore_dist_topic.png"]),
+     ["centrality_topic.png", "kcore_dist_topic.png"]),
     ("Step 13 — Topic popularity vs influence",
-    ["topic_influence.png"]),
+     ["topic_influence.png"]),
 ]
 
 # ── Default config values ─────────────────────────────────────────────────────
@@ -595,7 +605,7 @@ class App(tk.Tk):
         else:
             lines = [f"Config: {label}"]
             for net_key, net_stats in stats.items():
-                if isinstance(net_stats, dict):
+                if isinstance(net_stats, dict) and "Nodes" in net_stats:
                     name = net_stats.get("Network", net_key)
                     nodes = net_stats.get("Nodes", "?")
                     edges = net_stats.get("Edges", "?")
@@ -814,8 +824,8 @@ class App(tk.Tk):
                         halved = str(max(100, int(threads) // 2))
                         self._queue_append_log(
                             f"OOM (rc {rc}) — retrying with max_threads={halved}\n")
-                        self.after(0, lambda l=label: self._queue_set_status(
-                            l, f"OOM retry {halved}", "yellow"))
+                        self.after(0, lambda l=label, h=halved: self._queue_set_status(
+                            l, f"OOM retry {h}", "yellow"))
                         retry_cmd = [
                             _PYTHON, _MAIN_PY,
                             "--threshold", threshold,
@@ -831,19 +841,20 @@ class App(tk.Tk):
                         for line in proc2.stdout:
                             self._queue_append_log(line)
                         proc2.wait()
-                        if proc2.returncode == 0:
+                        retry_rc = proc2.returncode
+                        if retry_rc == 0:
                             item["status"] = "done"
                             self.after(0, lambda l=label: self._queue_set_status(
                                 l, "done (retry)", "green"))
                             self.after(0, lambda l=label: self._on_run_success(l))
                         else:
                             item["status"] = "failed"
-                            self.after(0, lambda l=label: self._queue_set_status(
-                                l, f"failed {proc2.returncode}", "pink"))
+                            self.after(0, lambda l=label, r=retry_rc: self._queue_set_status(
+                                l, f"failed {r}", "pink"))
                     else:
                         item["status"] = "failed"
-                        self.after(0, lambda l=label: self._queue_set_status(
-                            l, f"failed rc={rc}", "pink"))
+                        self.after(0, lambda l=label, r=rc: self._queue_set_status(
+                            l, f"failed rc={r}", "pink"))
                 except Exception as e:
                     item["status"] = "error"
                     self._queue_append_log(f"Error: {e}\n")
