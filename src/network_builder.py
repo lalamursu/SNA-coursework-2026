@@ -178,8 +178,23 @@ def build_bipartite_user_topic_network(
     user_proj = bipartite.weighted_projected_graph(B, user_nodes)
     topic_proj = bipartite.weighted_projected_graph(B, topic_nodes)
 
-    print(f"  User projection : {user_proj.number_of_nodes():,} nodes, {user_proj.number_of_edges():,} edges")
-    print(f"  Topic projection: {topic_proj.number_of_nodes():,} nodes, {topic_proj.number_of_edges():,} edges")
+    # We remove low-weight edges to reveal the true network backbone.
+    # This allows centrality metrics to actually differentiate the nodes.
+    def _filter_backbone(G: nx.Graph, min_weight: int) -> nx.Graph:
+        G_filtered = G.copy()
+        weak_edges = [(u, v) for u, v, d in G_filtered.edges(data=True) if d.get('weight', 1) < min_weight]
+        G_filtered.remove_edges_from(weak_edges)
+        # Remove nodes that became isolated after edge removal
+        G_filtered.remove_nodes_from(list(nx.isolates(G_filtered)))
+        return G_filtered
+
+    # Apply the filter. You can increase min_weight (e.g., to 3 or 4) 
+    # if the centrality charts still look too identical.
+    user_proj = _filter_backbone(user_proj, min_weight=3)
+    topic_proj = _filter_backbone(topic_proj, min_weight=3)
+
+    print(f"  User projection (filtered) : {user_proj.number_of_nodes():,} nodes, {user_proj.number_of_edges():,} edges")
+    print(f"  Topic projection (filtered): {topic_proj.number_of_nodes():,} nodes, {topic_proj.number_of_edges():,} edges")
 
     return B, user_proj, topic_proj
 

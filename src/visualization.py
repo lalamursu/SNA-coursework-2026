@@ -38,44 +38,70 @@ def plot_network_sample(
     G: nx.Graph,
     title: str,
     output_path: Path,
-    max_nodes: int = 400,
+    max_nodes: int = 500,
     color_attr: str | None = None,
+    min_edge_weight: int = 1, # Added weight filtering to clean up the 'hairball'
 ) -> None:
-    """Spring-layout plot of up to max_nodes nodes from the giant component."""
-    G_u = G.to_undirected() if G.is_directed() else G
+    """Spring-layout plot focusing on structure and community coloring."""
+    G_u = G.to_undirected() if G.is_directed() else G.copy()
+
+    # 1. Edge weight filtering to reveal backbone structure
+    if min_edge_weight > 1:
+        low_weight_edges = [(u, v) for u, v, d in G_u.edges(data=True) if d.get('weight', 1) < min_edge_weight]
+        G_u.remove_edges_from(low_weight_edges)
 
     if G_u.number_of_nodes() == 0:
         return
 
-    giant = max(nx.connected_components(G_u), key=len)
+    # 2. Extract giant component for better visualization
+    comps = list(nx.connected_components(G_u))
+    giant = max(comps, key=len)
     sample = list(giant)[:max_nodes]
     G_plot = G_u.subgraph(sample).copy()
 
-    pos = nx.spring_layout(G_plot, seed=42, k=1.2 / max(np.sqrt(G_plot.number_of_nodes()), 1))
+    # 3. Physics-tuned layout: 'k' pushes clusters away from each other
+    pos = nx.spring_layout(
+        G_plot, 
+        seed=42, 
+        k=2.0 / np.sqrt(len(G_plot)), 
+        iterations=50
+    )
+    
     degrees = dict(G_plot.degree())
-    node_sizes = [max(15, 6 * degrees[n]) for n in G_plot.nodes()]
+    node_sizes = [max(30, 10 * degrees[n]) for n in G_plot.nodes()]
 
+    # 4. Coloring logic
     if color_attr:
         attrs = nx.get_node_attributes(G_plot, color_attr)
         unique_vals = sorted(set(attrs.values()))
+        cmap = plt.cm.get_cmap("turbo", len(unique_vals))
         val_to_idx = {v: i for i, v in enumerate(unique_vals)}
-        n_vals = max(len(unique_vals), 1)
-        cmap = plt.cm.tab20
-        node_colors = [cmap(val_to_idx.get(attrs.get(n, unique_vals[0]), 0) / n_vals) for n in G_plot.nodes()]
+        node_colors = [cmap(val_to_idx.get(attrs.get(n, 0), 0)) for n in G_plot.nodes()]
     else:
-        node_colors = "steelblue"
+        node_colors = "#89b4fa"
 
-    fig, ax = plt.subplots(figsize=(12, 10))
-    nx.draw_networkx(
+    fig, ax = plt.subplots(figsize=(12, 10), facecolor='#ffffff')
+    
+    # 5. Draw edges with transparency
+    nx.draw_networkx_edges(
+        G_plot, pos=pos, ax=ax,
+        alpha=0.1,
+        edge_color="#cccccc",
+        width=0.4
+    )
+
+    # 6. Draw nodes with borders (Medium-style aesthetic)
+    nx.draw_networkx_nodes(
         G_plot, pos=pos, ax=ax,
         node_size=node_sizes,
         node_color=node_colors,
-        edge_color="gray",
-        alpha=0.75,
-        with_labels=False,
-        width=0.3,
+        edgecolors="white", 
+        linewidths=1.2,
+        alpha=0.9
     )
-    ax.set_title(f"{title}  (showing ≤{max_nodes} nodes)")
+
+    ax.set_title(f"{title}\n(Filtered weight < {min_edge_weight}, showing ≤{max_nodes} nodes)", 
+                 fontsize=14, pad=20)
     ax.axis("off")
     _save(fig, output_path)
 
@@ -472,6 +498,9 @@ def plot_community_profiles(
     df_tmp = df_tmp.dropna(subset=["community"])
     df_tmp["community"] = df_tmp["community"].astype(int)
 
+    # FIXED: Ensure sentiment strings are lowercase to match the reindex labels
+    df_tmp["sentiment"] = df_tmp["sentiment"].astype(str).str.lower()
+
     # Keep only the largest communities
     top_comms = (
         df_tmp["community"].value_counts().head(max_communities).index.tolist()
@@ -491,7 +520,8 @@ def plot_community_profiles(
         kind="bar",
         stacked=True,
         ax=ax,
-        color=["#2ecc71", "#95a5a6", "#e74c3c"],
+        # Colors updated to match the sentiment distribution plot (Catppuccin style)
+        color=["#a6e3a1", "#6c7086", "#f38ba8"],
     )
     ax.set_title(f"Sentiment Distribution per Community  (top {max_communities})")
     ax.set_xlabel("Community ID")

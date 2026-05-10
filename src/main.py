@@ -378,6 +378,11 @@ def _run_pipeline(  # noqa: C901
     all_stats["bipartite_user_projection"] = s
     _print_stats(s)
 
+    # NEW: Detect communities in User Projection for clean visualization
+    print("  Detecting communities in User Projection...")
+    part_uproj, _, _ = detect_communities(g_user_proj)
+    nx.set_node_attributes(g_user_proj, part_uproj, "community")
+
     t.start_step(19)
     print("[Step 7] Centrality — User projection")
     _, top_uproj = centrality_analysis(g_user_proj)
@@ -388,8 +393,12 @@ def _run_pipeline(  # noqa: C901
     t.start_step(20)
     print("[Step 7] Plots — Bipartite & projections")
     plot_bipartite_network(g_bipartite, plots_dir / "network_bipartite.png")
+    
+    # UPDATED: Use community coloring and filter low-weight edges for the projection
     plot_network_sample(g_user_proj, f"{_NET_UPROJ} Network",
-                        plots_dir / "network_user_proj.png", color_attr=None)
+                        plots_dir / "network_user_proj.png", 
+                        color_attr="community", min_edge_weight=2)
+    
     plot_degree_distribution(g_user_proj, _NET_UPROJ,
                              plots_dir / "degree_dist_user_proj.png")
 
